@@ -1,0 +1,7 @@
+.env
+outputs/processed_cases.json
+outputs/sent_emails.json
+__pycache__/
+*.pyc
+.venv/
+venv/
