@@ -70,6 +70,16 @@ streamlit run src/app.py
 
 Uses the free tier Gemini API. To stay within limits, the classifier rotates across multiple API keys (round-robin) and adds a 4-second delay between requests. If all keys hit their limit, it waits 15 seconds and retries before falling back to Manual Review. You can add up to 19 keys in `.env` — each from a separate Google account.
 
+## Why Multiple API Keys?
+
+This is a personal project — I wasn't going to pay for API credits just to test something I built for fun.
+
+Started with a single free Gemini key, hit the daily rate limit almost immediately. 100 emails was way too much volume for one free tier key. Instead of pulling out a credit card, I opened multiple Google accounts, grabbed a free API key from each, and built a rotation system that cycles through all of them automatically.
+
+When one key hits its daily limit, the system moves to the next one without missing a beat. It's not elegant, but it works — and it cost exactly €0.
+
+Honestly it ended up being better engineering anyway. The rotation logic forced me to think about resilience, retry strategies, and graceful degradation in a way I wouldn't have if I'd just paid for unlimited access.
+
 ## Tech Stack
 
 - **Python** — core language
