@@ -1,80 +1,78 @@
 # O2C Email Agent
 
-Automated Order-to-Cash email classification and response system powered by Google Gemini AI.
+AR inboxes are a mess. Payment confirmations, disputes, invoice requests — all mixed together, all needing manual reading and routing. I built this to automate that.
 
-## Architecture
+## Demo
 
+![Dashboard Overview](screenshots/dashboard_overview.png)
+![Cash Application Queue](screenshots/cash_application.png)
+![Dispute Case Detail](screenshots/dispute_detail.png)
+![Draft Email Generation](screenshots/draft_email.png)
+
+## What It Does
+
+Classifies inbound accounts receivable emails using AI and routes them to the right queue automatically. Feed it a batch of emails, it spits out structured cases with recommended actions and a dashboard to manage them.
+
+## Why I Built This
+
+I got curious about how finance teams actually spend their time and realized a huge chunk of AR work is just reading emails and deciding what to do with them. Felt like a perfect problem for an LLM — unstructured input, clear output categories, high volume, low tolerance for mistakes. Wanted to see how far I could take it with a clean agentic pipeline.
+
+## How It Works
 ```
-data/Sample Emails.json   →   src/classify.py   →   outputs/processed_cases.json
-                                                            ↓
-                               src/app.py (Streamlit)  ←────┘
-                                    ↓
-                          src/email_generator.py   →   Draft emails
-                                    ↓
-                          outputs/sent_emails.json
+data/Sample Emails.json
+        ↓
+src/classify.py  ←  Gemini AI (multi-key rotation)
+        ↓
+outputs/processed_cases.json
+        ↓
+src/app.py  ←  Streamlit dashboard
+        ↓
+Generate draft response  ←  src/email_generator.py
+        ↓
+outputs/sent_emails.json
 ```
 
-### Components
+The classifier runs as a batch job upfront — all the heavy AI work happens once. The dashboard is just reading JSON, so it's fast and snappy.
 
-- **`src/classify.py`** — Batch classifier. Reads 100 emails, classifies each into one of three queues (Cash Application, Disputes, AR Support) using Gemini AI. Uses round-robin API key rotation across multiple keys with model fallback.
-- **`src/email_generator.py`** — Draft email generator. Produces professional response emails for classified cases using Gemini AI.
-- **`src/app.py`** — Streamlit dashboard. Three queue tabs, case details, AI-generated draft responses, and simulated email sending.
+## Queues
 
-### Queues
-
-| Queue | Category | Example Triggers |
-|-------|----------|-----------------|
-| Cash Application | Payment Claim | "We paid", "Wire transferred", "Remittance attached" |
-| Disputes | Dispute | Short payment, pricing issue, damaged goods, credit note request |
-| AR Support | General AR Request | Invoice copy request, statement request, proof of delivery |
+| Queue | Category | Triggered By |
+|-------|----------|--------------|
+| Cash Application | Payment Claim | "We paid", "wire transferred", "remittance attached" |
+| Disputes | Dispute | Short payment, pricing issue, damaged goods, credit note request, payment on hold |
+| AR Support | General AR Request | Invoice copy, statement request, payment confirmation, proof of delivery |
+| Manual Review | Error | API failures, classification errors |
 
 ## Setup
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Configure API keys** in `.env`:
-   ```
-   GEMINI_API_KEY_1=your_key_here
-   GEMINI_API_KEY_2=your_key_here
-   GEMINI_API_KEY_3=your_key_here
-   GEMINI_API_KEY_4=your_key_here
-   GEMINI_API_KEY_5=your_key_here
-   ```
-
-3. **Run the classifier** (processes all 100 emails):
-   ```bash
-   python src/classify.py
-   ```
-
-4. **Launch the dashboard:**
-   ```bash
-   streamlit run src/app.py
-   ```
-
-## File Structure
-
+**1. Install dependencies**
+```bash
+pip install -r requirements.txt
 ```
-o2c-email-agent/
-├── data/
-│   └── Sample Emails.json      # 100 input emails
-├── outputs/
-│   ├── processed_cases.json    # Classifier output
-│   └── sent_emails.json        # Sent email log
-├── src/
-│   ├── classify.py             # Batch classifier
-│   ├── email_generator.py      # Draft generator
-│   └── app.py                  # Streamlit dashboard
-├── .env                        # API keys
-├── requirements.txt
-└── README.md
+
+**2. Add your API keys**
+```bash
+cp .env.example .env
+# Edit .env and add your Gemini API keys
 ```
+
+**3. Run the classifier**
+```bash
+python src/classify.py
+```
+
+**4. Launch the dashboard**
+```bash
+streamlit run src/app.py
+```
+
+## Rate Limits
+
+Uses the free tier Gemini API. To stay within limits, the classifier rotates across multiple API keys (round-robin) and adds a 4-second delay between requests. If all keys hit their limit, it waits 15 seconds and retries before falling back to Manual Review. You can add up to 19 keys in `.env` — each from a separate Google account.
 
 ## Tech Stack
 
-- **AI Model:** Google Gemini (gemini-2.5-flash-lite / gemini-2.5-flash / gemini-2.0-flash)
-- **SDK:** `google-genai`
-- **Dashboard:** Streamlit
-- **Storage:** JSON files (no database)
+- **Python** — core language
+- **Google Gemini** (gemini-2.5-flash / gemini-2.0-flash) — classification + draft generation
+- **Streamlit** — dashboard UI
+- **JSON files** — storage (no database needed)
