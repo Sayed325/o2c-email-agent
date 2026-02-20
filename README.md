@@ -68,7 +68,7 @@ streamlit run src/app.py
 
 ## Rate Limits
 
-Uses the free tier Gemini API. To stay within limits, the classifier rotates across multiple API keys (round-robin) and adds a 4-second delay between requests. If all keys hit their limit, it waits 15 seconds and retries before falling back to Manual Review. You can add up to 19 keys in `.env` — each from a separate Google account.
+Uses the free tier Gemini API. To stay within limits, the classifier rotates across multiple API keys (round-robin) and adds a 4-second delay between requests. If all keys hit their limit, it waits 15 seconds and retries before falling back to Manual Review.
 
 ## Why Multiple API Keys?
 
