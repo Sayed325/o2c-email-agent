@@ -80,6 +80,22 @@ When one key hits its daily limit, the system moves to the next one without miss
 
 Honestly it ended up being better engineering anyway. The rotation logic forced me to think about resilience, retry strategies, and graceful degradation in a way I wouldn't have if I'd just paid for unlimited access.
 
+## Graceful Degradation
+
+Here's what actually happens when the free tier fights back.
+
+**Key rotation.** Each email starts with a different API key — round-robin by index, so no single key takes all the heat. If that key comes back with a 429 or a 503, the system skips it and tries the next one in the pool. No drama, no stopped run.
+
+**Model fallback.** For each key, it tries three models in order: `gemini-2.5-flash-lite → gemini-2.5-flash → gemini-2.0-flash`. The lite model goes first since it's the most available on the free tier. If it's overloaded or down, it falls through to the next one without making any noise about it.
+
+**JSON parse recovery.** Sometimes the AI wraps its response in markdown code fences (` ```json ... ``` `) even when you explicitly told it not to. The parser strips those fences before trying to parse. If it still can't make sense of the response, that key/model combo is skipped and the loop keeps going.
+
+**Cooldown retry.** If every single key/model combination fails on the first pass, the system waits 15 seconds and runs the entire rotation again. One clean retry, then a decision.
+
+**Manual Review queue.** If the retry also fails, the email lands in Manual Review. The `next_action` field logs what went wrong, and the dashboard shows a warning banner so the team knows something needs attention and can handle it manually.
+
+One extra thing worth calling out: `processed_cases.json` gets written after every single email — not at the end of the whole batch. If the script dies halfway through 100 emails, everything already classified is safe.
+
 ## Tech Stack
 
 - **Python** — core language
